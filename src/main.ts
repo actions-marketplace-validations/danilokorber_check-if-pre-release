@@ -13,6 +13,7 @@ export async function run(): Promise<void> {
     // Get the current release
     const { owner, repo } = github.context.repo;
     const release = github.context.payload.release;
+    core.setOutput('release', release);
     if (!release) {
       throw new Error('This action can only be triggered by a release');
     }
@@ -25,18 +26,23 @@ export async function run(): Promise<void> {
       repo,
       release_id: release.id,
     });
+
+    core.setOutput('prerelease', prerelease);
+
     if (prerelease) {
       core.setOutput('release_type', 'PRE_RELEASE');
-      core.setOutput('has_pre_release', prerelease.toString());
       core.info('The current release is a pre-release');
       const { data: releases } = await octokit.rest.repos.listReleases({
         owner,
         repo,
       });
+      core.setOutput('releases', releases);
       const previousPreRelease = releases.find((r) => r.prerelease && r.id !== release.id);
       if (previousPreRelease) {
+        core.setOutput('has_pre_release', true);
         core.info(`The previous pre-release was ${previousPreRelease.tag_name}`);
       } else {
+        core.setOutput('has_pre_release', false);
         core.info('There was no previous pre-release');
       }
     } else {
@@ -48,11 +54,14 @@ export async function run(): Promise<void> {
         repo,
         per_page: 2,
       });
+      core.setOutput('releases', releases);
       const previousRelease = releases.find((r) => !r.prerelease && r.id !== release.id);
       core.setOutput('has_pre_release', previousRelease !== undefined);
       if (previousRelease) {
+        core.setOutput('has_pre_release', true);
         core.info(`The previous release was ${previousRelease.tag_name}`);
       } else {
+        core.setOutput('has_pre_release', false);
         core.info('There was no previous release');
       }
     }
